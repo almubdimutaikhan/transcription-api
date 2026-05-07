@@ -1,5 +1,8 @@
 # Transcription API
 
+![CI](https://github.com/almubdimutaikhan/transcription-api/actions/workflows/ci.yml/badge.svg)
+![Coverage](https://img.shields.io/badge/coverage-87%25-brightgreen)
+
 Async REST API for managing audio transcription jobs. Built with FastAPI, SQLAlchemy 2 (async), PostgreSQL, and JWT auth.
 
 ## Stack

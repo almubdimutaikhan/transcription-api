@@ -41,8 +41,11 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-groups
 
+      - name: Create test database
+        run: psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE transcript_test_db;"
+
       - name: Run migrations
         run: uv run alembic upgrade head
 
-      - name: Import check
-        run: uv run python -c "from app.main import app; print('OK')"
+      - name: Run tests
+        run: uv run pytest tests/ --cov=app --cov-report=term-missing --cov-fail-under=80 -q
