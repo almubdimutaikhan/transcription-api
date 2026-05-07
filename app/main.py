@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Path
+import app.models  # register all models on Base.metadata
 from app.routes.jobs import router as job_router
 app = FastAPI()
 

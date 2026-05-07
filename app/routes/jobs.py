@@ -1,33 +1,27 @@
-from fastapi import APIRouter, Path, HTTPException
+from fastapi import APIRouter, Path, HTTPException, Depends
 from typing import Annotated
-from pydantic import BaseModel, Field
-from enum import Enum
 from uuid import UUID, uuid4
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.job import TranscriptionJob
+from app.dependencies import get_db
+from app.schemas.jobs import JobCreate, JobResponse
+
 router = APIRouter(prefix='/jobs', tags=['jobs'])
 
+@router.post('/', status_code=201, response_model=JobResponse)
+async def create_job(payload: JobCreate, db: AsyncSession = Depends(get_db)):
+    job = TranscriptionJob(user_id=uuid4(), **payload.model_dump())
+    db.add(job)
+    await db.commit()
+    await db.refresh(job)
 
-class Language(str, Enum):
-    EN = 'en'
-    KZ = 'kz'
-    RU = 'ru'
-    PL = 'pl'
+    return JobResponse.model_validate(job)
 
-class JobCreate(BaseModel):
-    language: str
-    audio_url: Annotated[str, Field(min_length=10)]
-    priority: Annotated[int, Field(default=0, le=3, title="Job priority", description="When processing on queue less priority number means higher priority")]
-    
+@router.get('/{job_id}', response_model=JobResponse)
+async def find_job(job_id: Annotated[UUID, Path(description="Job UUID")], db: AsyncSession = Depends(get_db)):
+    job = await db.get(TranscriptionJob, job_id)
 
-class Job(JobCreate):
-    id: UUID = Field(default_factory=uuid4)
+    if job is None:
+        raise HTTPException(status_code=404, detail='Job not found')
 
-
-@router.post('/', status_code=201)
-async def create_job(payload: JobCreate) -> Job:
-    return Job(**payload.model_dump())
-
-
-@router.get('/{job_id}')
-async def find_job(job_id: Annotated[UUID, Path(description="Job's UUID")]) -> Job:
-    raise HTTPException(status_code=404, detail="Job not found")
-
+    return JobResponse.model_validate(job)

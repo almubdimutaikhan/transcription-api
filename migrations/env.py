@@ -9,7 +9,7 @@ from alembic import context
 
 from app.config import settings
 from app.models.base import Base
-import app.models.user, app.models.job, app.models.audit
+import app.models  # registers User, TranscriptionJob, AuditLog on Base.metadata
 
 config = context.config
 
