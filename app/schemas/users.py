@@ -9,7 +9,7 @@ class UserCreate(BaseModel):
     password: Annotated[str, Field(min_length=8)]
 
 
-class UserResponse(BaseModel):
+class UserRead(BaseModel):
     model_config = {'from_attributes': True}
 
     id: UUID
@@ -17,3 +17,8 @@ class UserResponse(BaseModel):
     token_balance: int
     is_active: bool
     created_at: datetime
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = 'bearer'

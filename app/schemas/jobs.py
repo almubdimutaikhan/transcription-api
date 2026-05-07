@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, field_validator
 from typing import Annotated
 from uuid import UUID
 from datetime import datetime
@@ -24,10 +24,25 @@ class JobCreate(BaseModel):
     audio_url: Annotated[str, Field(min_length=10)]
     file_ext: Annotated[str, Field(min_length=2, max_length=10)]
     priority: Annotated[int, Field(default=1, ge=1, le=5)]
-    user_id: UUID
+
+    @field_validator('audio_url')
+    @classmethod
+    def must_be_https(cls, v: str) -> str:
+        if not v.startswith('https://'):
+            raise ValueError('audio_url must use HTTPS')
+        return v
+
+    @field_validator('file_ext')
+    @classmethod
+    def normalize_ext(cls, v: str) -> str:
+        return v.lower().lstrip('.')
 
 
-class JobResponse(BaseModel):
+class JobStatusUpdate(BaseModel):
+    status: JobStatus
+
+
+class JobRead(BaseModel):
     model_config = {'from_attributes': True}
 
     id: UUID
@@ -41,3 +56,10 @@ class JobResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     finished_at: datetime | None
+
+
+class JobListResponse(BaseModel):
+    items: list[JobRead]
+    total: int
+    page: int
+    size: int
