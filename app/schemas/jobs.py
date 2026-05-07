@@ -24,6 +24,7 @@ class JobCreate(BaseModel):
     audio_url: Annotated[str, Field(min_length=10)]
     file_ext: Annotated[str, Field(min_length=2, max_length=10)]
     priority: Annotated[int, Field(default=1, ge=1, le=5)]
+    user_id: UUID
 
 
 class JobResponse(BaseModel):

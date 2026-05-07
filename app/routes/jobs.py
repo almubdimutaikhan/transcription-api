@@ -10,7 +10,7 @@ router = APIRouter(prefix='/jobs', tags=['jobs'])
 
 @router.post('/', status_code=201, response_model=JobResponse)
 async def create_job(payload: JobCreate, db: AsyncSession = Depends(get_db)):
-    job = TranscriptionJob(user_id=uuid4(), **payload.model_dump())
+    job = TranscriptionJob(**payload.model_dump())
     db.add(job)
     await db.commit()
     await db.refresh(job)
