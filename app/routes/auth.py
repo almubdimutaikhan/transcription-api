@@ -1,12 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.dependencies import get_db
 from app.models.user import User
 from app.auth import hash_password, verify_password, create_access_token
-from app.schemas.users import UserCreate, UserRead, Token
+from app.schemas.users import UserCreate, UserRead, Token, LoginRequest
 
 router = APIRouter(prefix='/auth', tags=['auth'])
 
@@ -26,11 +25,11 @@ async def register(payload: UserCreate, db: AsyncSession = Depends(get_db)):
 
 @router.post('/token', response_model=Token)
 async def login(
-    form: OAuth2PasswordRequestForm = Depends(),
+    payload: LoginRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    user = await db.scalar(select(User).where(User.email == form.username))
-    if user is None or not verify_password(form.password, user.hashed_password):
+    user = await db.scalar(select(User).where(User.email == payload.email))
+    if user is None or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=401, detail='Incorrect email or password')
     if not user.is_active:
         raise HTTPException(status_code=403, detail='Account is inactive')

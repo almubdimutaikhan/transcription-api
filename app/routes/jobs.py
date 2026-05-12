@@ -8,6 +8,7 @@ from sqlalchemy import select, func
 from app.dependencies import get_db, get_current_user, PaginationParams
 from app.models.job import TranscriptionJob
 from app.schemas.jobs import JobCreate, JobRead, JobListResponse, JobStatus, JobStatusUpdate
+from worker.celery_app import transcribe_audio
 
 router = APIRouter(prefix='/jobs', tags=['jobs'])
 
@@ -22,6 +23,8 @@ async def create_job(
     db.add(job)
     await db.commit()
     await db.refresh(job)
+
+    transcribe_audio.delay(str(job.id))
     return JobRead.model_validate(job)
 
 

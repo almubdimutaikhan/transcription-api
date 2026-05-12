@@ -1,5 +1,5 @@
 from fastapi import Depends, HTTPException, Query
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from jose import JWTError
 from uuid import UUID
@@ -7,7 +7,7 @@ from uuid import UUID
 import app.database as _db
 from app.auth import decode_token
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/auth/token')
+bearer_scheme = HTTPBearer()
 
 
 async def get_db():
@@ -16,13 +16,13 @@ async def get_db():
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ):
     from app.models.user import User
     credentials_error = HTTPException(status_code=401, detail='Invalid or expired token')
     try:
-        user_id = decode_token(token)
+        user_id = decode_token(credentials.credentials)
     except JWTError:
         raise credentials_error
 

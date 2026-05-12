@@ -22,9 +22,22 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/transcript_db
+      REDIS_URL: redis://redis:6379/0
     depends_on:
       db:
         condition: service_healthy
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
+  redis_data:
   postgres_data:
