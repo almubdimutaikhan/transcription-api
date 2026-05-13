@@ -15,17 +15,6 @@ services:
       timeout: 5s
       retries: 5
 
-  api:
-    build: .
-    ports:
-      - "8000:8000"
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/transcript_db
-      REDIS_URL: redis://redis:6379/0
-    depends_on:
-      db:
-        condition: service_healthy
   redis:
     image: redis:7-alpine
     ports:
@@ -37,6 +26,46 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/transcript_db
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+
+  worker:
+    build: .
+    command: celery -A worker.celery_app worker --loglevel=info
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/transcript_db
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+
+  flower:
+    image: mher/flower
+    ports:
+      - "5555:5555"
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      - redis
+    restart: always
 
 volumes:
   redis_data:

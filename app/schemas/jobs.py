@@ -52,6 +52,7 @@ class JobRead(BaseModel):
     file_ext: str
     audio_url: str
     transcription_text: str | None
+    celery_task_id: str | None
     priority: int
     created_at: datetime
     updated_at: datetime

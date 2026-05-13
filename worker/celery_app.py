@@ -14,29 +14,46 @@ celery_app.conf.update(
     task_serializer="json",
     result_serializer="json",
     accept_content=["json"],
-    timezone="UTC"
+    timezone="UTC",
 )
 
 sync_engine = create_engine(
     settings.database_url.replace("postgresql+asyncpg", "postgresql+psycopg2")
 )
 
-@celery_app.task()
-def transcribe_audio(job_id: str):
+
+@celery_app.task(bind=True, max_retries=3)
+def transcribe_audio(self, job_id: str):
     from app.models.job import TranscriptionJob
     from uuid import UUID
     from datetime import datetime, timezone
 
-    with Session(sync_engine) as session:
-        job = session.get(TranscriptionJob, UUID(job_id))
-        job.status = "processing"
-        session.commit()
+    uuid = UUID(job_id)
 
-    sleep(5)  # simulate transcription
+    try:
+        with Session(sync_engine) as session:
+            job = session.get(TranscriptionJob, uuid)
+            if job is None:
+                return
 
-    with Session(sync_engine) as session:
-        job = session.get(TranscriptionJob, UUID(job_id))
-        job.status = "completed"
-        job.transcription_text = "This is a sample transcription."
-        job.finished_at = datetime.now(timezone.utc)
-        session.commit()
+            job.status = "processing"
+            session.commit()
+
+        sleep(5)  # simulate transcription
+
+        with Session(sync_engine) as session:
+            job = session.get(TranscriptionJob, uuid)
+            if job is None:
+                return
+            job.status = "completed"
+            job.transcription_text = "This is a sample transcription."
+            job.finished_at = datetime.now(timezone.utc)
+            session.commit()
+
+    except Exception as exc:
+        with Session(sync_engine) as session:
+            job = session.get(TranscriptionJob, uuid)
+            if job:
+                job.status = "failed"
+                session.commit()
+        raise self.retry(exc=exc, countdown=2 ** self.request.retries)

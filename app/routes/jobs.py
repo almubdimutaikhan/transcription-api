@@ -7,7 +7,7 @@ from sqlalchemy import select, func
 
 from app.dependencies import get_db, get_current_user, PaginationParams
 from app.models.job import TranscriptionJob
-from app.schemas.jobs import JobCreate, JobRead, JobListResponse, JobStatus, JobStatusUpdate
+from app.schemas.jobs import JobCreate, JobRead, JobListResponse, JobStatus
 from worker.celery_app import transcribe_audio
 
 router = APIRouter(prefix='/jobs', tags=['jobs'])
@@ -24,7 +24,10 @@ async def create_job(
     await db.commit()
     await db.refresh(job)
 
-    transcribe_audio.delay(str(job.id))
+    task = transcribe_audio.delay(str(job.id))
+    job.celery_task_id = task.id
+    await db.commit()
+    await db.refresh(job)
     return JobRead.model_validate(job)
 
 
@@ -65,22 +68,6 @@ async def get_job(
     job = await db.get(TranscriptionJob, job_id)
     if job is None or job.deleted_at is not None or job.user_id != current_user.id:
         raise HTTPException(status_code=404, detail='Job not found')
-    return JobRead.model_validate(job)
-
-
-@router.patch('/{job_id}/status', response_model=JobRead)
-async def update_job_status(
-    job_id: Annotated[UUID, Path(description='Job UUID')],
-    payload: JobStatusUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
-    job = await db.get(TranscriptionJob, job_id)
-    if job is None or job.deleted_at is not None or job.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail='Job not found')
-    job.status = payload.status.value
-    await db.commit()
-    await db.refresh(job)
     return JobRead.model_validate(job)
 
 
